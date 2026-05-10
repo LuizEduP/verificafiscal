@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VERIFICAFISCAL</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;max-width:960px;margin:40px auto;padding:0 20px;background:#f5f5f5}
+h1{color:#1a237e}
+.editor-wrapper{position:relative;height:360px;border:1px solid #ccc;border-radius:4px;background:#fff;overflow:hidden}
+.editor-wrapper .line-numbers{position:absolute;top:0;left:0;width:44px;padding:10px 4px;font-family:monospace;font-size:13px;line-height:1.5;text-align:right;color:#999;background:#f0f0f0;border-right:1px solid #ddd;user-select:none;pointer-events:none;overflow:hidden;white-space:pre;z-index:1}
+.editor-wrapper textarea{display:block;width:100%;height:100%;padding:10px 10px 10px 56px;font-family:monospace;font-size:13px;line-height:1.5;border:none;border-radius:0;resize:none;background:transparent;color:#333;caret-color:#000;white-space:pre;overflow:auto;position:absolute;top:0;left:0;z-index:2}
+button{background:#1a237e;color:#fff;border:none;padding:10px 30px;font-size:16px;border-radius:4px;cursor:pointer;margin:10px 0}
+button:hover{background:#283593}
+#resultado{background:#fff;border:1px solid #ddd;border-radius:4px;padding:15px;font-family:monospace;font-size:13px;white-space:pre-wrap;word-wrap:break-word;min-height:50px}
+</style>
+</head>
+<body>
+<h1>VERIFICAFISCAL</h1>
+<p>Validador de documentos fiscais eletrônicos</p>
+<div class="editor-wrapper">
+  <div class="line-numbers" id="lineNumbers"></div>
+  <textarea id="xmlInput" placeholder="Cole o XML aqui..." spellcheck="false"></textarea>
+</div>
+<br>
+<button id="btnValidar">Validar</button>
+<pre id="resultado"></pre>
+<script>
+(function(){
+  var ta=document.getElementById('xmlInput');
+  var ln=document.getElementById('lineNumbers');
+
+  function updateLineNumbers(){
+    var lines=ta.value.split('\n');
+    var nums='';
+    for(var i=1;i<=lines.length;i++){nums+=i+'\n'}
+    ln.textContent=nums;
+    ln.style.height=ta.scrollHeight+'px';
+  }
+
+  function syncScroll(){ln.style.marginTop=(-ta.scrollTop)+'px'}
+
+  ta.addEventListener('input',updateLineNumbers);
+  ta.addEventListener('scroll',syncScroll);
+  ta.addEventListener('keydown',function(e){
+    if(e.key==='Tab'){
+      e.preventDefault();
+      var s=this.selectionStart;
+      this.value=this.value.substring(0,s)+'  '+this.value.substring(this.selectionEnd);
+      this.selectionStart=this.selectionEnd=s+2;
+      updateLineNumbers();
+    }
+  });
+  updateLineNumbers();
+
+  document.getElementById('btnValidar').addEventListener('click',function(){
+    var xml=ta.value;
+    var pre=document.getElementById('resultado');
+    if(!xml.trim()){pre.textContent='Por favor, cole um XML para validar.';pre.style.color='#e65100';return}
+    pre.textContent='Validando...';pre.style.color='#333';
+    fetch('/validar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({xml})})
+    .then(function(r){return r.json()})
+    .then(function(data){
+      var txt=JSON.stringify(data,null,2);
+      pre.textContent=txt;
+      if(data.avisos && data.avisos.length>0){
+        pre.style.color='#e65100';
+      }else{
+        pre.style.color=data.valido?'#1b5e20':'#b71c1c';
+      }
+    })
+    .catch(function(err){pre.textContent='Erro de conexao: '+err.message;pre.style.color='#b71c1c'})
+  });
+})();
+</script>
+</body>
+</html>
